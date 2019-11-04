@@ -8,12 +8,12 @@ help:
 install: .pubgotten
 
 .PHONY: fmt
-fmt:
+fmt: .pubgotten
 	dartfmt -l 100 -w .
 	git checkout -- lib/src/generated/**/*.dart
 
 .PHONY: lint
-lint:
+lint: .pubgotten
 	dartanalyzer --fatal-infos --fatal-warnings lib test
 
 .pubgotten: pubspec.yaml
@@ -25,7 +25,7 @@ test: .pubgotten
 	pub run test
 
 .PHONY: run
-run:
+run: .pubgotten
 	dart bin/main.dart
 
 .PHONY: clean
