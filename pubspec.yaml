@@ -1,7 +1,7 @@
 name: immaculater_dart
-description: Dart-language code encapsulating Immaculater's mergeprotobuf API and pyatdl.ToDoList protocol
-version: 1.0.0
-author: 'David L. Chandler (chandler37 on github)'
+description: Dart-language code encapsulating Immaculater's mergeprotobufs API for reading and writing to-do lists
+version: 0.1.0
+author: 'David L. Chandler <immaculaterhelp@gmail.com>'
 homepage: https://github.com/chandler37/immaculater_dart
 
 environment:

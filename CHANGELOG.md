@@ -1,5 +1,5 @@
-## 1.0.0
+## 0.1.0
 
-        - Initial version (created by Stagehand), shaped with care to
-        perhaps work for a 'we never need to merge' use case. Perhaps even
-        when a merge is required.
+        - Initial version (thank you to the Stagehand code generator),
+        shaped with care to perhaps work for a 'we never need to merge'
+        use case. Perhaps even when a merge is required.
