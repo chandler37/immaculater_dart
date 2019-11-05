@@ -21,10 +21,6 @@ class ApiException implements Exception {
   String toString() => 'ApiException: $message';
 }
 
-int calculate() {
-  return 6 * 7;
-}
-
 /// A client of github.com/chandler37/immaculater which is a Django app
 class DjangoClient extends http.BaseClient {
   final String userAgent;
@@ -62,7 +58,8 @@ int _next32bitInt(math.Random prng) {
   return prng.nextInt(1 << 32);
 }
 
-/// Returns a pseudorandom UID result such that -2**63 <= result < 0 or 0 < result < 2**63
+/// Returns a uniformly pseudorandom UID result such that -2**63 <= result < 0
+/// or 0 < result < 2**63
 Int64 randomUid(math.Random prng) {
   var zero = Int64(0);
   var answer = zero;

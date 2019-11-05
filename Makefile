@@ -14,7 +14,7 @@ fmt: .pubgotten
 
 .PHONY: lint
 lint: .pubgotten
-	dartanalyzer --fatal-infos --fatal-warnings lib test
+	dartanalyzer --fatal-infos --fatal-warnings bin lib test
 
 .pubgotten: pubspec.yaml
 	pub get

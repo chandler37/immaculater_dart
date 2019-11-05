@@ -61,6 +61,11 @@ We use a mix of JSON (for errors returned), HTTP 204 NO CONTENT, and [protocol
 buffers](https://developers.google.com/protocol-buffers/docs/darttutorial) for
 the input and output of mergeprotobufs. It is not gRPC.
 
+To make progress, learn how `immaculater_dart_test.dart` works. There is a
+skipped test that can be used to make the test suite hit a live backend. Record
+that interaction in a "cassette". The tests should not require network access.
+
+
 ## Credit where credit is due
 
 Created from templates made available by Stagehand under a BSD-style
