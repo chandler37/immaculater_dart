@@ -1,13 +1,14 @@
 # immaculater_dart
 Dart-language code encapsulating
 [Immaculater's](https://github.com/chandler37/immaculater) mergeprotobufs API
-for reading and writing to-do lists with actions, contexts, projects, folders,
-and notes.
+for reading and writing personal to-do lists with actions, contexts, projects,
+folders, and notes.
 
 One future direction is to use this library in a new Immaculater Flutter
 app. Instead of dealing with little bits of data, you'll be sending back and
 forth the entire to-do list since they're typically small enough for that to be
-performant in the very asynchronous world of Flutter.
+performant in the asynchronous world of Flutter (it is just for one person,
+after all).
 
 Users can then have their choice of the
 [Immaculater](https://github.com/chandler37/immaculater) classic web
@@ -53,6 +54,12 @@ If you're developing this library, type this:
 Which will only work if you have the Dart SDK installed. (I used the Dart SDK
 via [Homebrew](https://brew.sh/), not the Dart inside of Flutter's SDK.)
 
+
+## How does it work under the hood?
+
+We use a mix of JSON (for errors returned), HTTP 204 NO CONTENT, and [protocol
+buffers](https://developers.google.com/protocol-buffers/docs/darttutorial) for
+the input and output of mergeprotobufs. It is not gRPC.
 
 ## Credit where credit is due
 

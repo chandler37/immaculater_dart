@@ -85,7 +85,8 @@ pb.ChecksumAndData createChecksumAndData(pb.ToDoList tdl) {
 /// Calls /todo/mergeprotobufs which might be a read or a write (that also does
 /// a read). Returns null when and only when you did a write and the server did
 /// not merge, meaning that you have the latest result and there is no need to
-/// update your state with the merged pyatdl.ToDoList.
+/// update your state with the merged pyatdl.ToDoList. Raises ApiException and
+/// errors from package:http.
 Future<pb.MergeToDoListResponse> merge(
     {@required String backendUrl,
     @required http.Client client,
@@ -149,7 +150,7 @@ Future<T> withClient<T>(
   }
 }
 
-// TODO(chandler37): maybe make pull request against dart protobuf library to
+// TODO(chandler37): maybe make a pull request against dart protobuf library to
 // better handle int64, at least when creating ASCII prettyprint which prints
 // fixed64 as negative (see sanityCheck)
 

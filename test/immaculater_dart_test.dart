@@ -289,7 +289,6 @@ void runTests() {
 
 // TODO(chandler37): Add more test cases, including:
 //
-// test("Creating a new Action, writing it, reading it back", () => {
 // test("Creating a new Action that is complete except for a Timestamp but otherwise blank", () => {
 // test("makeMergeToDoListRequestToMergeOursWithTheirs", () => {
 // test("test deserialization, serialization, and CRUD operations for folders, project, actions, context, notes", () => {
