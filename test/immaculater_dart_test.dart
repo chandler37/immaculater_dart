@@ -29,6 +29,10 @@ Map<String, String> importantResponseHeaders = {
   'content-type': 'application/x-protobuf; messageType="pyatdl.MergeToDoListResponse"'
 };
 
+Map<String, String> jsonResponseHeaders = {
+  'content-type': 'application/json'
+};
+
 void main() {
   runTests();
 }
@@ -172,6 +176,45 @@ void runTests() {
         textOfMergeToDoListResponse: rsgei.textOfMergeToDoListResponse);
   });
 
+  test('do something requiring a merge, receiving, for now, a 500 with checksums', () async {
+    bool recording = false; // NOTE: change this if you must rerecord.
+    pb.MergeToDoListResponse beginning = await expectCassetteMatches(
+        body: emptyMergeRequest(),
+        b64: rbw1.b64,
+        sha1Checksum: rbw1.sha1Checksum,
+        textOfMergeToDoListResponse: rbw1.textOfMergeToDoListResponse);
+    assertEnvVars();
+    var req = saneMergeRequest();
+    var newAction = pb.Action();
+    newAction.ensureCommon().ensureMetadata().name = "i remembered to set a UID";  // should not matter
+    var prng = math.Random(37);
+    newAction.common.uid = randomUid(prng);
+    beginning.toDoList.inbox.actions.add(newAction);
+    req.latest = createChecksumAndData(beginning.toDoList);
+    req.previousSha1Checksum = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    var msg = '''{"error": "The server does not yet implement merging, but merging is required because the sha1_checksum of the todolist prior to your input is 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' and the sha1_checksum of the database is 'f5d57bd3462b245cafb529d8eb19d6929504910b'"}''';
+    var client = MockClient((request) async {
+        assertUrl(request.url.path);
+        return http.Response(msg, 500, headers: jsonResponseHeaders);
+    });
+    var body = req.writeToBuffer();
+    if (recording) {
+      await withClient(merge,
+        backendUrl: backendUrl, authorizer: auth, verbose: false, body: body);
+      expect("should have thrown", "but did not");
+    } else {
+      expect(
+        () async => await merge(
+          backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
+          client: client,
+          body: body),
+        throwsA(predicate(
+            (Exception e) {
+              return e is ApiException && e.message == "unexpected httpStatusCode=500 with body " + msg;
+      })));
+    }
+  });
+
   // skipped because right now a 500 from AssertionError is returned, not a 422:
   test('create an action but forget to set its UID and get a 422', () async {
     pb.MergeToDoListResponse beginning = await expectCassetteMatches(
@@ -302,3 +345,8 @@ void runTests() {
 
 // TODO(chandler37): Run code coverage tools to automate making sure we're
 // actually calling the functions that we define here.
+
+// TODO(chandler37): Simulate doing a write that seems to fail but did work on
+// the backend. Test how one recovers from that by reading, checking to see if
+// it worked on the backend, and otherwise using the read value to reapply the
+// delta.
