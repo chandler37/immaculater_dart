@@ -9,6 +9,9 @@ import 'package:protobuf/protobuf.dart' as protobuf;
 import 'package:immaculater_dart/src/auth.dart';
 import 'package:immaculater_dart/src/generated/core/pyatdl.pb.dart' as pb;
 
+export 'src/auth.dart';
+export 'src/generated/core/pyatdl.pb.dart';
+
 // `library immaculater_dart` is not recommended: "When the library directive
 // isn’t specified, a unique tag is generated for each library based on its path
 // and filename. Therefore, we suggest that you omit the library directive from
@@ -35,6 +38,24 @@ class DjangoClient extends http.BaseClient {
     request.headers['content-type'] = "application/x-protobuf";
     return _inner.send(request);
   }
+}
+
+/// Returns the current time suitable for pb.Timestamp usage.
+Int64 now() {
+  return Int64(DateTime.now().microsecondsSinceEpoch);
+}
+
+pb.Action newAction({@required String name, @required math.Random prng, String note}) {
+  assert(name != null);
+  var action = pb.Action();
+  action.ensureCommon().ensureMetadata().name = name;
+  if (note != null && note.isNotEmpty) {
+    action.ensureCommon().ensureMetadata().note = note;
+  }
+  var ts = action.common.ensureTimestamp();
+  ts.ctime = ts.mtime = now();
+  action.common.uid = randomUid(prng);
+  return action;
 }
 
 /// Returns a sane MergeToDoListRequest
@@ -132,6 +153,28 @@ Future<pb.MergeToDoListResponse> merge(
   return resp_pb;
 }
 
+/// Returns true iff respPb.sanityCheck is sane.
+bool isSaneResponse(pb.MergeToDoListResponse respPb) {
+  // In python3, 2**64-18369614221190021342 is 77129852519530274. Int64 is the
+  // wrong abstraction for a `fixed64` field; Uint64 would be better but does
+  // not exist. Integer overflow yields -77129852519530274:
+  if (Int64.parseInt("-77129852519530274") != Int64.parseInt("18369614221190021342")) {
+    throw ApiException("Assertion failed re: -77129852519530274 and 18369614221190021342");
+  }
+  return (respPb.sanityCheck.toInt() == -77129852519530274);
+}
+
+/// Reads in the latest ToDoList, wrapped up in a
+Future<pb.MergeToDoListResponse> readToDoList(
+    {@required String backendUrl, @required http.Client client}) async {
+  pb.MergeToDoListResponse resp =
+      await merge(backendUrl: backendUrl, client: client, body: emptyMergeRequest());
+  if (!isSaneResponse(resp)) {
+    throw ApiException("Sanity check failed on response");
+  }
+  return resp;
+}
+
 Future<T> withClient<T>(
     Future<T> fn(
         {@required String backendUrl,
@@ -145,6 +188,16 @@ Future<T> withClient<T>(
   var client = DjangoClient(http.Client(), authorizer);
   try {
     return await fn(backendUrl: backendUrl, client: client, body: body, verbose: verbose);
+  } finally {
+    client.close();
+  }
+}
+
+Future<T> withClient2<T>(Future<T> fn({@required String backendUrl, @required http.Client client}),
+    {@required Authorizer authorizer, @required String backendUrl}) async {
+  var client = DjangoClient(http.Client(), authorizer);
+  try {
+    return await fn(backendUrl: backendUrl, client: client);
   } finally {
     client.close();
   }

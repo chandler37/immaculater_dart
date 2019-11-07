@@ -75,11 +75,7 @@ Future<http.Response> Function(http.Request) helpMock(
 }
 
 void expectSaneResponse(pb.MergeToDoListResponse respPb) {
-  expect(respPb.sanityCheck.toInt(), -77129852519530274);
-  // In python3, 2**64-18369614221190021342 is 77129852519530274. Int64 is the
-  // wrong abstraction for a `fixed64` field; Uint64 would be better but does
-  // not exist. Integer overflow yields -77129852519530274:
-  expect(Int64.parseInt("-77129852519530274"), Int64.parseInt("18369614221190021342"));
+  expect(isSaneResponse(respPb), true);
 }
 
 void helpTestJsonError(
