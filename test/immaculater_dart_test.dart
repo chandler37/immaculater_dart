@@ -215,8 +215,8 @@ void runTests() {
     }
   });
 
-  // skipped because right now a 500 from AssertionError is returned, not a 422:
   test('create an action but forget to set its UID and get a 422', () async {
+    bool recording = false; // NOTE: change this if you must rerecord.
     pb.MergeToDoListResponse beginning = await expectCassetteMatches(
         body: emptyMergeRequest(),
         b64: rbw1.b64,
@@ -228,11 +228,30 @@ void runTests() {
     newAction.ensureCommon().ensureMetadata().name = "i forgot to set a UID";
     beginning.toDoList.inbox.actions.add(newAction);
     req.latest = createChecksumAndData(beginning.toDoList);
-    req.previousSha1Checksum = rbw1.sha1Checksum;
-    pb.MergeToDoListResponse _ = await withClient(merge,
-        backendUrl: backendUrl, authorizer: auth, verbose: true, body: req.writeToBuffer());
-    expect("some JSON", "TODO(chandler37): how do we handle JSON results?");
-  }, skip: "TODO(chandler37): waiting for the server to be better about 422 vs. 500");
+    req.previousSha1Checksum = 'f5d57bd3462b245cafb529d8eb19d6929504910b';
+    var msg = '''{"error": "The given to-do list is ill-formed: Illegal UID value 0 from metadata {\n  name: \"i forgot to set a UID\"\n}\n: not in range [-2**63, 0) or (0, 2**63)"}''';
+    var statusCode = 422;
+    var client = MockClient((request) async {
+        assertUrl(request.url.path);
+        return http.Response(msg, statusCode, headers: jsonResponseHeaders);
+    });
+    var body = req.writeToBuffer();
+    if (recording) {
+      await withClient(merge,
+        backendUrl: backendUrl, authorizer: auth, verbose: false, body: body);
+      expect("should have thrown", "but did not");
+    } else {
+      expect(
+        () async => await merge(
+          backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
+          client: client,
+          body: body),
+        throwsA(predicate(
+            (Exception e) {
+              return e is ApiException && e.message == "unexpected httpStatusCode=${statusCode} with body " + msg;
+      })));
+    }
+  });
 
   // To set this up you must know the sha1_checksum of the uncompressed
   // pyatdl.ToDoList in the database, and the database does use compression so
