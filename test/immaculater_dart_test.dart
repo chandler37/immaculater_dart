@@ -80,10 +80,11 @@ void expectSaneResponse(pb.MergeToDoListResponse respPb) {
 
 void helpTestJsonError(
     {@required bool recording,
-    @required Function transformTdl,
+    @required Function updateTdl,
     @required String msg,
     @required int statusCode,
-    @required String previousSha1Checksum}) async {
+    @required String previousSha1Checksum,
+    bool newData = false}) async {
   pb.MergeToDoListResponse beginning = await expectCassetteMatches(
       body: emptyMergeRequest(),
       b64: rbw1.b64,
@@ -92,18 +93,28 @@ void helpTestJsonError(
   if (recording) {
     assertEnvVars();
   }
-  transformTdl(beginning.toDoList);
+  updateTdl(beginning.toDoList);
   var req = saneMergeRequest();
   req.latest = createChecksumAndData(beginning.toDoList);
-  req.previousSha1Checksum = previousSha1Checksum;
+  req.newData = newData;
+  if (previousSha1Checksum != null) {
+    req.previousSha1Checksum = previousSha1Checksum;
+  }
   var client = MockClient((request) async {
     assertUrl(request.url.path);
     return http.Response(msg, statusCode, headers: jsonResponseHeaders);
   });
   var body = req.writeToBuffer();
   if (recording) {
-    await withClient(merge, backendUrl: backendUrl, authorizer: auth, verbose: true, body: body);
-    expect("should have thrown", "but did not");
+    var threw = false;
+    try {
+      await withClient(merge, backendUrl: backendUrl, authorizer: auth, verbose: true, body: body);
+    } on ApiException catch (e) {
+      threw = true;
+      expect("$e", "ApiException: unexpected httpStatusCode=$statusCode with body $msg");
+    }
+    expect(threw, true);
+    expect("recording", "should now be set to false");
   } else {
     expect(
         () async => await merge(
@@ -164,8 +175,214 @@ void runTestsOfUserWithoutTodolistYet() {
   });
 }
 
+void runJsonErrorTests() {
+  test('do something requiring a merge, receiving, for now, a 500 with checksums', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          var newAction = pb.Action();
+          newAction.ensureCommon().ensureMetadata().name =
+              "i remembered to set a UID"; // should not matter
+          var prng =
+              math.Random(); // truly random so that the new to-do list is guaranteed to mismatch
+          newAction.common.uid = randomUid(prng);
+          beginning.inbox.actions.add(newAction);
+        },
+        msg:
+            '''{"error": "The server does not yet implement merging, but merging is required because the sha1_checksum of the todolist prior to your input is 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' and the sha1_checksum of the database is 'ca9005dc33a1c988aa6f84a4a94e2904a534013f'"}''',
+        statusCode: 500,
+        previousSha1Checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
+  });
+
+  test('test erroneous previousSha1Checksum passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+        },
+        msg:
+            '''{"error": "new data should not be based on a previous checksum aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}''',
+        statusCode: 422,
+        previousSha1Checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        newData: true);
+  });
+
+  test('test erroneous data (#1) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+        },
+        msg: '''{"error": "req.latest.sha1_checksum given but req.latest.payload is missing"}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  // The User must have a todo_todolist row already for this to happen:
+  test('test erroneous data (#2 empty inbox with tdl) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureInbox();
+        },
+        msg:
+            '''{"error": "You set the new_data bit, but there is already a to-do list in the database. Maybe we should overwrite it? Maybe we should do a potentially ugly merge (ugly because two or more applications are competing to get the user started)? For now we abort and await your pull request."}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  // The User must *not* have a todo_todolist row already for this to happen:
+  test('test erroneous data (#2 empty inbox w/o tdl) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureInbox();
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: empty project in the protocol buffer -- not even a UID is present"}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  // The User must *not* have a todo_todolist row already for this to happen:
+  test('test erroneous data (#3 no root) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureInbox().ensureCommon().uid = inboxUid;
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: protocol buffer error: the root folder, with UID=2, is required"}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  // The User must *not* have a todo_todolist row already for this to happen:
+  test('test erroneous data (#4 no inbox) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureRoot().ensureCommon().uid = Int64(2);
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: protocol buffer error: the Inbox project, with UID=1, is required"}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  // The User must *not* have a todo_todolist row already for this to happen:
+  test('test erroneous data (#5 no ctx_list) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureInbox().ensureCommon().uid = inboxUid;
+          beginning.ensureRoot().ensureCommon().uid = rootFolderUid;
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: protocol buffer error: the ctx_list is required"}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  // The User must *not* have a todo_todolist row already for this to happen:
+  test('test erroneous data (#6 empty ctx_list) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureInbox().ensureCommon().uid = inboxUid;
+          beginning.ensureRoot().ensureCommon().uid = rootFolderUid;
+          beginning.ensureCtxList();
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: A ContextList must be nonempty -- add a name."}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  // The User must *not* have a todo_todolist row already for this to happen:
+  test('test erroneous data (#7 no UID on ctx_list) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureInbox().ensureCommon().uid = inboxUid;
+          beginning.ensureRoot().ensureCommon().uid = rootFolderUid;
+          beginning.ensureCtxList().ensureCommon().ensureMetadata().name = "ctx_list";
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: Illegal UID value 0 from metadata {\\n  name: \\"ctx_list\\"\\n}\\n: not in range [-2**63, 0) or (0, 2**63)"}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  test('test erroneous data (#8 wrong inbox UID) passed in with new_data: true', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureInbox().ensureCommon().uid = Int64(37); // 1 is correct
+          beginning.ensureRoot().ensureCommon().uid = rootFolderUid;
+          beginning.ensureCtxList().ensureCommon().ensureMetadata().name = "ctx_list";
+          beginning.ensureCtxList().ensureCommon().uid = randomUid(math.Random(400));
+        },
+        msg: '''{"error": "The given to-do list is ill-formed: Inbox UID is not 1, it is 37"}''',
+        statusCode: 422,
+        previousSha1Checksum: null,
+        newData: true);
+  });
+
+  // new_data is false here:
+  test('create an action but forget to set its UID and get a 422', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          var newAction = pb.Action();
+          newAction.ensureCommon().ensureMetadata().name = "i forgot to set a UID";
+          beginning.inbox.actions.add(newAction);
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: Illegal UID value 0 from metadata {\\n  name: \\"i forgot to set a UID\\"\\n}\\n: not in range [-2**63, 0) or (0, 2**63)"}''',
+        statusCode: 422,
+        previousSha1Checksum: '4124b2ab67458f98e46347977d0c19174fc7b38f');
+  });
+
+  test('duplicated UIDs give a graceful error', () async {
+    await helpTestJsonError(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.inbox.actions
+              .add(newAction(name: "an action", note: "a note\nwith lines", prng: math.Random(42)));
+          var a2 = pb.Action();
+          a2.ensureCommon().ensureMetadata().name = "another action";
+          var ts = a2.common.ensureTimestamp();
+          ts.ctime = ts.mtime = now();
+          a2.common.uid = beginning.inbox.actions.last.common.uid;
+          beginning.inbox.actions.add(a2);
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: A UID -6009336601577921106 is duplicated!"}''',
+        statusCode: 422,
+        previousSha1Checksum: '4124b2ab67458f98e46347977d0c19174fc7b38f');
+  });
+}
+
 void runTests() {
   runTestsOfUserWithoutTodolistYet();
+  runJsonErrorTests();
 
   // This example template does a merge() call that actually makes an HTTP call
   // and uses verbose mode to display some base64 (the heart of what we call a
@@ -206,42 +423,6 @@ void runTests() {
         b64: rsgei.b64,
         sha1Checksum: rsgei.sha1Checksum,
         textOfMergeToDoListResponse: rsgei.textOfMergeToDoListResponse);
-  });
-
-  test('do something requiring a merge, receiving, for now, a 500 with checksums', () async {
-    await helpTestJsonError(
-        recording: false, // NOTE: change this if you must rerecord.
-        transformTdl: (pb.ToDoList beginning) {
-          var newAction = pb.Action();
-          newAction.ensureCommon().ensureMetadata().name =
-              "i remembered to set a UID"; // should not matter
-          var prng =
-              math.Random(); // truly random so that the new to-do list is guaranteed to mismatch
-          newAction.common.uid = randomUid(prng);
-          beginning.inbox.actions.add(newAction);
-        },
-        msg:
-            '''{"error": "The server does not yet implement merging, but merging is required because the sha1_checksum of the todolist prior to your input is 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' and the sha1_checksum of the database is 'ca9005dc33a1c988aa6f84a4a94e2904a534013f'"}''',
-        statusCode: 500,
-        previousSha1Checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
-  });
-
-  test('create an action but forget to set its UID and get a 422', () async {
-    await helpTestJsonError(
-        recording: false, // NOTE: change this if you must rerecord.
-        transformTdl: (pb.ToDoList beginning) {
-          var newAction = pb.Action();
-          newAction.ensureCommon().ensureMetadata().name =
-              "i remembered to set a UID"; // should not matter
-          var prng =
-              math.Random(); // truly random so that the new to-do list is guaranteed to mismatch
-          newAction.common.uid = randomUid(prng);
-          beginning.inbox.actions.add(newAction);
-        },
-        msg:
-            '''{"error": "The given to-do list is ill-formed: Illegal UID value 0 from metadata {\n  name: \"i forgot to set a UID\"\n}\n: not in range [-2**63, 0) or (0, 2**63)"}''',
-        statusCode: 422,
-        previousSha1Checksum: 'f5d57bd3462b245cafb529d8eb19d6929504910b');
   });
 
   // To set this up you must know the sha1_checksum of the uncompressed
@@ -344,10 +525,11 @@ void runTests() {
 
 // TODO(chandler37): Add more test cases, including:
 //
-// test("Creating a new Action that is complete except for a Timestamp but otherwise blank", () => {
-// test("makeMergeToDoListRequestToMergeOursWithTheirs", () => {
+// test("Creating a new Action that is complete except for a Timestamp", () => {
+//
+// test("Creating a new Action that is blank except for a Timestamp", () => {
+//
 // test("test deserialization, serialization, and CRUD operations for folders, project, actions, context, notes", () => {
-// Plus coverage of 'new_data: true' (with and without 'latest' filled in).
 
 // TODO(chandler37): implement Matcher that uses
 // https://github.com/google/diff-match-patch/wiki/Language:-Dart because for

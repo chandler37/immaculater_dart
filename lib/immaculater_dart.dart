@@ -79,12 +79,14 @@ int _next32bitInt(math.Random prng) {
   return prng.nextInt(1 << 32);
 }
 
-/// Returns a uniformly pseudorandom UID result such that -2**63 <= result < 0
-/// or 0 < result < 2**63
+const inboxUid = Int64.ONE;
+const rootFolderUid = Int64.TWO;
+
+/// Returns a uniformly pseudorandom UID u such that -2**63 <= u < 0 or 2 < u <
+/// 2**63
 Int64 randomUid(math.Random prng) {
-  var zero = Int64(0);
-  var answer = zero;
-  while (answer == zero) {
+  var answer = Int64.ZERO;
+  while (answer == Int64.ZERO || answer == inboxUid || answer == rootFolderUid) {
     answer = Int64.fromInts(_next32bitInt(prng), _next32bitInt(prng));
   }
   return answer;
