@@ -92,6 +92,9 @@ Future<pb.MergeToDoListResponse> merge(
   if (backendUrl?.isEmpty ?? true) {
     throw FormatException("Immaculater Django backend must be specified via backendUrl.");
   }
+  if (verbose) {
+    print('Starting HTTP request. (Do not check in tests that do actual HTTP requests.)');
+  }
   var response = await client.post(backendUrl, body: body);
   if (verbose) {
     print('Response status: ${response.statusCode}');

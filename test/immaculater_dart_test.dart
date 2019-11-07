@@ -82,6 +82,44 @@ void expectSaneResponse(pb.MergeToDoListResponse respPb) {
   expect(Int64.parseInt("-77129852519530274"), Int64.parseInt("18369614221190021342"));
 }
 
+void helpTestJsonError(
+    {@required bool recording,
+    @required Function transformTdl,
+    @required String msg,
+    @required int statusCode,
+    @required String previousSha1Checksum}) async {
+  pb.MergeToDoListResponse beginning = await expectCassetteMatches(
+      body: emptyMergeRequest(),
+      b64: rbw1.b64,
+      sha1Checksum: rbw1.sha1Checksum,
+      textOfMergeToDoListResponse: rbw1.textOfMergeToDoListResponse);
+  if (recording) {
+    assertEnvVars();
+  }
+  transformTdl(beginning.toDoList);
+  var req = saneMergeRequest();
+  req.latest = createChecksumAndData(beginning.toDoList);
+  req.previousSha1Checksum = previousSha1Checksum;
+  var client = MockClient((request) async {
+    assertUrl(request.url.path);
+    return http.Response(msg, statusCode, headers: jsonResponseHeaders);
+  });
+  var body = req.writeToBuffer();
+  if (recording) {
+    await withClient(merge, backendUrl: backendUrl, authorizer: auth, verbose: true, body: body);
+    expect("should have thrown", "but did not");
+  } else {
+    expect(
+        () async => await merge(
+            backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
+            client: client,
+            body: body), throwsA(predicate((Exception e) {
+      return e is ApiException &&
+          e.message == "unexpected httpStatusCode=${statusCode} with body ${msg}";
+    })));
+  }
+}
+
 Future<pb.MergeToDoListResponse> expectCassetteMatches(
     {@required Uint8List body,
     @required String b64,
@@ -175,82 +213,39 @@ void runTests() {
   });
 
   test('do something requiring a merge, receiving, for now, a 500 with checksums', () async {
-    bool recording = false; // NOTE: change this if you must rerecord.
-    pb.MergeToDoListResponse beginning = await expectCassetteMatches(
-        body: emptyMergeRequest(),
-        b64: rbw1.b64,
-        sha1Checksum: rbw1.sha1Checksum,
-        textOfMergeToDoListResponse: rbw1.textOfMergeToDoListResponse);
-    if (recording) {
-      assertEnvVars();
-    }
-    var req = saneMergeRequest();
-    var newAction = pb.Action();
-    newAction.ensureCommon().ensureMetadata().name =
-        "i remembered to set a UID"; // should not matter
-    var prng = math.Random(37);
-    newAction.common.uid = randomUid(prng);
-    beginning.toDoList.inbox.actions.add(newAction);
-    req.latest = createChecksumAndData(beginning.toDoList);
-    req.previousSha1Checksum = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
-    var msg =
-        '''{"error": "The server does not yet implement merging, but merging is required because the sha1_checksum of the todolist prior to your input is 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' and the sha1_checksum of the database is 'f5d57bd3462b245cafb529d8eb19d6929504910b'"}''';
-    var client = MockClient((request) async {
-      assertUrl(request.url.path);
-      return http.Response(msg, 500, headers: jsonResponseHeaders);
-    });
-    var body = req.writeToBuffer();
-    if (recording) {
-      await withClient(merge, backendUrl: backendUrl, authorizer: auth, verbose: false, body: body);
-      expect("should have thrown", "but did not");
-    } else {
-      expect(
-          () async => await merge(
-              backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
-              client: client,
-              body: body), throwsA(predicate((Exception e) {
-        return e is ApiException && e.message == "unexpected httpStatusCode=500 with body " + msg;
-      })));
-    }
+    await helpTestJsonError(
+        recording: false, // NOTE: change this if you must rerecord.
+        transformTdl: (pb.ToDoList beginning) {
+          var newAction = pb.Action();
+          newAction.ensureCommon().ensureMetadata().name =
+              "i remembered to set a UID"; // should not matter
+          var prng =
+              math.Random(); // truly random so that the new to-do list is guaranteed to mismatch
+          newAction.common.uid = randomUid(prng);
+          beginning.inbox.actions.add(newAction);
+        },
+        msg:
+            '''{"error": "The server does not yet implement merging, but merging is required because the sha1_checksum of the todolist prior to your input is 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' and the sha1_checksum of the database is 'ca9005dc33a1c988aa6f84a4a94e2904a534013f'"}''',
+        statusCode: 500,
+        previousSha1Checksum: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa');
   });
 
   test('create an action but forget to set its UID and get a 422', () async {
-    bool recording = false; // NOTE: change this if you must rerecord.
-    pb.MergeToDoListResponse beginning = await expectCassetteMatches(
-        body: emptyMergeRequest(),
-        b64: rbw1.b64,
-        sha1Checksum: rbw1.sha1Checksum,
-        textOfMergeToDoListResponse: rbw1.textOfMergeToDoListResponse);
-    if (recording) {
-      assertEnvVars();
-    }
-    var req = saneMergeRequest();
-    var newAction = pb.Action();
-    newAction.ensureCommon().ensureMetadata().name = "i forgot to set a UID";
-    beginning.toDoList.inbox.actions.add(newAction);
-    req.latest = createChecksumAndData(beginning.toDoList);
-    req.previousSha1Checksum = 'f5d57bd3462b245cafb529d8eb19d6929504910b';
-    var msg =
-        '''{"error": "The given to-do list is ill-formed: Illegal UID value 0 from metadata {\n  name: \"i forgot to set a UID\"\n}\n: not in range [-2**63, 0) or (0, 2**63)"}''';
-    var statusCode = 422;
-    var client = MockClient((request) async {
-      assertUrl(request.url.path);
-      return http.Response(msg, statusCode, headers: jsonResponseHeaders);
-    });
-    var body = req.writeToBuffer();
-    if (recording) {
-      await withClient(merge, backendUrl: backendUrl, authorizer: auth, verbose: false, body: body);
-      expect("should have thrown", "but did not");
-    } else {
-      expect(
-          () async => await merge(
-              backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
-              client: client,
-              body: body), throwsA(predicate((Exception e) {
-        return e is ApiException &&
-            e.message == "unexpected httpStatusCode=${statusCode} with body " + msg;
-      })));
-    }
+    await helpTestJsonError(
+        recording: false, // NOTE: change this if you must rerecord.
+        transformTdl: (pb.ToDoList beginning) {
+          var newAction = pb.Action();
+          newAction.ensureCommon().ensureMetadata().name =
+              "i remembered to set a UID"; // should not matter
+          var prng =
+              math.Random(); // truly random so that the new to-do list is guaranteed to mismatch
+          newAction.common.uid = randomUid(prng);
+          beginning.inbox.actions.add(newAction);
+        },
+        msg:
+            '''{"error": "The given to-do list is ill-formed: Illegal UID value 0 from metadata {\n  name: \"i forgot to set a UID\"\n}\n: not in range [-2**63, 0) or (0, 2**63)"}''',
+        statusCode: 422,
+        previousSha1Checksum: 'f5d57bd3462b245cafb529d8eb19d6929504910b');
   });
 
   // To set this up you must know the sha1_checksum of the uncompressed
