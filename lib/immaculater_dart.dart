@@ -81,7 +81,7 @@ int _next32bitInt(math.Random prng) {
 
 const inboxUid = Int64.ONE;
 const rootFolderUid = Int64.TWO;
-var sanityCheckForResponse = Int64.parseInt("-77129852519530274");  // no const constructor
+var sanityCheckForResponse = Int64.parseInt("-77129852519530274"); // no const constructor
 
 /// Returns a uniformly pseudorandom UID u such that -2**63 <= u < 0 or 2 < u <
 /// 2**63

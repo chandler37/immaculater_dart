@@ -75,7 +75,8 @@ Future<http.Response> Function(http.Request) helpMock(
     } else {
       body = String.fromCharCodes(convert.base64Decode(resultingBase64));
     }
-    return http.Response(body, (resultingBase64 == null) ? 204: 200, headers: importantResponseHeaders);
+    return http.Response(body, (resultingBase64 == null) ? 204 : 200,
+        headers: importantResponseHeaders);
   };
 }
 
@@ -90,7 +91,8 @@ Future<http.Response> Function(http.Request) helpMockRaw(
     } else {
       body = resultingBytes;
     }
-    return http.Response.bytes(body, (resultingBytes == null) ? 204: 200, headers: importantResponseHeaders);
+    return http.Response.bytes(body, (resultingBytes == null) ? 204 : 200,
+        headers: importantResponseHeaders);
   };
 }
 
@@ -133,8 +135,8 @@ void helpTestJsonError(
     expect("recording", "should now be set to false");
   } else {
     var client = MockClient((request) async {
-        assertUrl(request.url.path);
-        return http.Response(msg, statusCode, headers: jsonResponseHeaders);
+      assertUrl(request.url.path);
+      return http.Response(msg, statusCode, headers: jsonResponseHeaders);
     });
     expect(
         () async => await merge(
@@ -151,7 +153,7 @@ void helpTestSuccess(
     {@required bool recording,
     @required Function updateTdl,
     @required String previousSha1Checksum,
-    Uint8List responseBytes = null,
+    Uint8List responseBytes,
     bool expectNoop = false,
     bool newData = false}) async {
   pb.MergeToDoListResponse beginning = await expectCassetteMatches(
@@ -172,14 +174,19 @@ void helpTestSuccess(
   var body = req.writeToBuffer();
   pb.MergeToDoListResponse resp;
   if (recording) {
-    resp = await withClient(merge, backendUrl: backendUrl, authorizer: auth, verbose: true, body: body);
+    resp = await withClient(merge,
+        backendUrl: backendUrl, authorizer: auth, verbose: true, body: body);
   } else {
     assert(expectNoop || responseBytes != null);
-    var client = MockClient(helpMockRaw(expectedBodyBytes: body, resultingBytes: (expectNoop) ? null : responseBytes));  // rbw1 would not be returned, but we just care about noop vs. otherwise
+    var client = MockClient(helpMockRaw(
+        expectedBodyBytes: body,
+        resultingBytes: (expectNoop)
+            ? null
+            : responseBytes)); // rbw1 would not be returned, but we just care about noop vs. otherwise
     resp = await merge(
-      backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
-      client: client,
-      body: body);
+        backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
+        client: client,
+        body: body);
   }
   if (expectNoop) {
     expect(resp, null);
