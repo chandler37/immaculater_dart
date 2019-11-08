@@ -1,3 +1,8 @@
+## 0.2.0
+
+        - Downgrades meta dependency to play nice with Flutter. Many
+        incremental improvements and new APIs. Many new tests.
+
 ## 0.1.0
 
         - Initial version (thank you to the Stagehand code generator),

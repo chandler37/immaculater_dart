@@ -30,7 +30,7 @@ class DjangoClient extends http.BaseClient {
   final Authorizer _authorizer;
   final http.Client _inner;
 
-  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.2.0-dev.1";
+  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.2.0";
 
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     request.headers['user-agent'] = userAgent;
