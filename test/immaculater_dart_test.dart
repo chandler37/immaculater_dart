@@ -69,8 +69,28 @@ Future<http.Response> Function(http.Request) helpMock(
   return (http.Request request) async {
     assertUrl(request.url.path);
     expect(request.bodyBytes, expectedBodyBytes);
-    return http.Response(String.fromCharCodes(convert.base64Decode(resultingBase64)), 200,
-        headers: importantResponseHeaders);
+    String body;
+    if (resultingBase64 == null) {
+      body = "";
+    } else {
+      body = String.fromCharCodes(convert.base64Decode(resultingBase64));
+    }
+    return http.Response(body, (resultingBase64 == null) ? 204: 200, headers: importantResponseHeaders);
+  };
+}
+
+Future<http.Response> Function(http.Request) helpMockRaw(
+    {@required Uint8List expectedBodyBytes, @required Uint8List resultingBytes}) {
+  return (http.Request request) async {
+    assertUrl(request.url.path);
+    expect(request.bodyBytes, expectedBodyBytes);
+    Uint8List body;
+    if (resultingBytes == null) {
+      body = Uint8List(0);
+    } else {
+      body = resultingBytes;
+    }
+    return http.Response.bytes(body, (resultingBytes == null) ? 204: 200, headers: importantResponseHeaders);
   };
 }
 
@@ -100,10 +120,6 @@ void helpTestJsonError(
   if (previousSha1Checksum != null) {
     req.previousSha1Checksum = previousSha1Checksum;
   }
-  var client = MockClient((request) async {
-    assertUrl(request.url.path);
-    return http.Response(msg, statusCode, headers: jsonResponseHeaders);
-  });
   var body = req.writeToBuffer();
   if (recording) {
     var threw = false;
@@ -116,6 +132,10 @@ void helpTestJsonError(
     expect(threw, true);
     expect("recording", "should now be set to false");
   } else {
+    var client = MockClient((request) async {
+        assertUrl(request.url.path);
+        return http.Response(msg, statusCode, headers: jsonResponseHeaders);
+    });
     expect(
         () async => await merge(
             backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
@@ -124,6 +144,50 @@ void helpTestJsonError(
       return e is ApiException &&
           e.message == "unexpected httpStatusCode=${statusCode} with body ${msg}";
     })));
+  }
+}
+
+void helpTestSuccess(
+    {@required bool recording,
+    @required Function updateTdl,
+    @required String previousSha1Checksum,
+    Uint8List responseBytes = null,
+    bool expectNoop = false,
+    bool newData = false}) async {
+  pb.MergeToDoListResponse beginning = await expectCassetteMatches(
+      body: emptyMergeRequest(),
+      b64: rbw1.b64,
+      sha1Checksum: rbw1.sha1Checksum,
+      textOfMergeToDoListResponse: rbw1.textOfMergeToDoListResponse);
+  if (recording) {
+    assertEnvVars();
+  }
+  updateTdl(beginning.toDoList);
+  var req = saneMergeRequest();
+  req.latest = createChecksumAndData(beginning.toDoList);
+  req.newData = newData;
+  if (previousSha1Checksum != null) {
+    req.previousSha1Checksum = previousSha1Checksum;
+  }
+  var body = req.writeToBuffer();
+  pb.MergeToDoListResponse resp;
+  if (recording) {
+    resp = await withClient(merge, backendUrl: backendUrl, authorizer: auth, verbose: true, body: body);
+  } else {
+    assert(expectNoop || responseBytes != null);
+    var client = MockClient(helpMockRaw(expectedBodyBytes: body, resultingBytes: (expectNoop) ? null : responseBytes));  // rbw1 would not be returned, but we just care about noop vs. otherwise
+    resp = await merge(
+      backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
+      client: client,
+      body: body);
+  }
+  if (expectNoop) {
+    expect(resp, null);
+  } else {
+    expect(resp, pb.MergeToDoListResponse.fromBuffer(responseBytes));
+  }
+  if (recording) {
+    expect("recording", "should now be set to false");
   }
 }
 
@@ -323,7 +387,7 @@ void runJsonErrorTests() {
           beginning.ensureCtxList().ensureCommon().ensureMetadata().name = "ctx_list";
         },
         msg:
-            '''{"error": "The given to-do list is ill-formed: Illegal UID value 0 from metadata {\\n  name: \\"ctx_list\\"\\n}\\n: not in range [-2**63, 0) or (0, 2**63)"}''',
+            '''{"error": "The given to-do list is ill-formed: A UID is missing from or explicitly zero in the protocol buffer!"}''',
         statusCode: 422,
         previousSha1Checksum: null,
         newData: true);
@@ -342,6 +406,24 @@ void runJsonErrorTests() {
         msg: '''{"error": "The given to-do list is ill-formed: Inbox UID is not 1, it is 37"}''',
         statusCode: 422,
         previousSha1Checksum: null,
+        newData: true);
+  });
+
+  test('test good data passed in with new_data: true', () async {
+    var resp = pb.MergeToDoListResponse();
+    resp.sha1Checksum = 'd195e655d514be4d94f5bc9eb361b6bace76482d';
+    resp.sanityCheck = sanityCheckForResponse;
+    await helpTestSuccess(
+        recording: false,
+        updateTdl: (pb.ToDoList beginning) {
+          beginning.clear();
+          beginning.ensureInbox().ensureCommon().uid = inboxUid; // 1 is correct
+          beginning.ensureRoot().ensureCommon().uid = rootFolderUid;
+          beginning.ensureCtxList().ensureCommon().ensureMetadata().name = "ctx_list";
+          beginning.ensureCtxList().ensureCommon().uid = randomUid(math.Random(400));
+        },
+        previousSha1Checksum: null,
+        responseBytes: resp.writeToBuffer(),
         newData: true);
   });
 
@@ -475,7 +557,8 @@ void runTests() {
           client: client,
           body: body);
     }
-    expect(resp, null);
+    expect(null, resp);
+    expect(false, recording);
   });
 
   test('insane protobuf encoding in mocked response', () async {

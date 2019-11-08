@@ -81,6 +81,7 @@ int _next32bitInt(math.Random prng) {
 
 const inboxUid = Int64.ONE;
 const rootFolderUid = Int64.TWO;
+var sanityCheckForResponse = Int64.parseInt("-77129852519530274");  // no const constructor
 
 /// Returns a uniformly pseudorandom UID u such that -2**63 <= u < 0 or 2 < u <
 /// 2**63
@@ -160,10 +161,10 @@ bool isSaneResponse(pb.MergeToDoListResponse respPb) {
   // In python3, 2**64-18369614221190021342 is 77129852519530274. Int64 is the
   // wrong abstraction for a `fixed64` field; Uint64 would be better but does
   // not exist. Integer overflow yields -77129852519530274:
-  if (Int64.parseInt("-77129852519530274") != Int64.parseInt("18369614221190021342")) {
+  if (sanityCheckForResponse != Int64.parseInt("18369614221190021342")) {
     throw ApiException("Assertion failed re: -77129852519530274 and 18369614221190021342");
   }
-  return (respPb.sanityCheck.toInt() == -77129852519530274);
+  return (respPb.sanityCheck == sanityCheckForResponse);
 }
 
 /// Reads in the latest ToDoList, wrapped up in a
