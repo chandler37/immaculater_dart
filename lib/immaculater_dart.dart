@@ -167,7 +167,7 @@ bool isSaneResponse(pb.MergeToDoListResponse respPb) {
   return (respPb.sanityCheck == sanityCheckForResponse);
 }
 
-/// Reads in the latest ToDoList, wrapped up in a
+/// Reads in the latest ToDoList, wrapped up in a MergeToDoListResponse.
 Future<pb.MergeToDoListResponse> readToDoList(
     {@required String backendUrl, @required http.Client client}) async {
   pb.MergeToDoListResponse resp =
