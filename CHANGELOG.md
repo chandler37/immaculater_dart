@@ -1,3 +1,8 @@
+## 0.3.0
+
+        - Merely updates the protocol with two new booleans for
+        MergeToDoListRequest.
+
 ## 0.2.0
 
         - Downgrades meta dependency to play nice with Flutter. Many
