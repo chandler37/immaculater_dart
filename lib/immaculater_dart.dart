@@ -30,7 +30,7 @@ class DjangoClient extends http.BaseClient {
   final Authorizer _authorizer;
   final http.Client _inner;
 
-  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.3.0";
+  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.4.0";
 
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     request.headers['user-agent'] = userAgent;
@@ -201,6 +201,23 @@ Future<T> withClient2<T>(Future<T> fn({@required String backendUrl, @required ht
   var client = DjangoClient(http.Client(), authorizer);
   try {
     return await fn(backendUrl: backendUrl, client: client);
+  } finally {
+    client.close();
+  }
+}
+
+Future<T> withClient3<T>(
+    Future<T> fn(
+        {@required http.Client client,
+        @required String backendUrl,
+        @required String username,
+        @required String password}),
+    {@required String backendUrl,
+    @required String username,
+    @required String password}) async {
+  var client = DjangoClient(http.Client(), UsernamePasswordAuthorizer(username, password));
+  try {
+    return await fn(backendUrl: backendUrl, client: client, username: username, password: password);
   } finally {
     client.close();
   }

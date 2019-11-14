@@ -1,3 +1,7 @@
+## 0.4.0
+
+        - JSON Web Token (JWT) authentication is supported.
+
 ## 0.3.0
 
         - Merely updates the protocol with two new booleans for

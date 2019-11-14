@@ -9,7 +9,6 @@ import 'package:http/testing.dart';
 import 'package:test/test.dart';
 
 import 'package:immaculater_dart/immaculater_dart.dart';
-import 'package:immaculater_dart/src/auth.dart';
 import 'package:immaculater_dart/src/generated/core/pyatdl.pb.dart' as pb;
 
 // TODO(chandler37): All cassettes besides read_before_write*.dart use the SHA1
@@ -20,10 +19,13 @@ import 'cassettes/read_before_write1.dart' as rbw1;
 import 'cassettes/read_something_given_empty_input.dart' as rsgei;
 import 'cassettes/read_when_no_todolist_exists.dart' as rwntdle;
 
-String backendUrl = Platform.environment["DART_TEST_IMMACULATER_URL"];
+String backendUrl = Platform.environment["DART_TEST_IMMACULATER_URL"] + "/todo/mergeprotobufs";
+String backendUrlJwt = Platform.environment["DART_TEST_IMMACULATER_URL"] + "/todo/v1/create_jwt";
 String username = Platform.environment["DART_TEST_IMMACULATER_USERNAME"];
 String password = Platform.environment["DART_TEST_IMMACULATER_PASSWORD"];
 Authorizer auth = UsernamePasswordAuthorizer(username, password);
+// Call /todo/v1/create_jwt to get a JWT, this one expiring in 24 hours:
+Authorizer authJwt = JsonWebTokenAuthorizer(Platform.environment["DART_TEST_IMMACULATER_JWT"]);
 
 Map<String, String> importantResponseHeaders = {
   'content-type': 'application/x-protobuf; messageType="pyatdl.MergeToDoListResponse"'
@@ -60,6 +62,12 @@ void assertEnvVars() {
 
 void assertUrl(String url) {
   if (url != "/todo/mergeprotobufs") {
+    throw FormatException("odd URL ${url}");
+  }
+}
+
+void assertJwtUrl(String url) {
+  if (url != "/todo/v1/create_jwt") {
     throw FormatException("odd URL ${url}");
   }
 }
@@ -469,9 +477,68 @@ void runJsonErrorTests() {
   });
 }
 
+void runJwtTests() {
+  test('happy path creating a JWT', () async {
+    bool recording = false;
+    if (recording) {
+      var token = await withClient3(createJsonWebToken,
+          backendUrl: backendUrlJwt, username: username, password: password);
+      expect(true, token.contains(RegExp(r'^.*\..*\.[^.]+$')));
+    } else {
+      var client = MockClient((request) async {
+        assertJwtUrl(request.url.path);
+        return http.Response('{"token":"e.a.b"}', 200, headers: jsonResponseHeaders);
+      });
+      var resp = await createJsonWebToken(
+          client: client, username: username, password: password, backendUrl: backendUrlJwt);
+      expect(resp, "e.a.b");
+    }
+    expect(false, recording);
+  });
+
+  test('happy path authenticating with a JWT', () async {
+    bool recording =
+        false; // NOTE: change this if you must rerecord. Also, change authJwt's token to something unexpired.
+    pb.MergeToDoListResponse beginning = await expectCassetteMatches(
+        body: emptyMergeRequest(),
+        b64: rbw1.b64,
+        sha1Checksum: rbw1.sha1Checksum,
+        textOfMergeToDoListResponse: rbw1.textOfMergeToDoListResponse);
+    if (recording) {
+      assertEnvVars();
+    }
+    var req = saneMergeRequest();
+    var newAction = pb.Action();
+    newAction.ensureCommon().ensureMetadata().name = "buy gallons of soymilk";
+    var prng = math.Random(37132);
+    newAction.common.uid = randomUid(prng);
+    beginning.toDoList.inbox.actions.add(newAction);
+    req.latest = createChecksumAndData(beginning.toDoList);
+    req.overwriteInsteadOfMerge = true;
+    pb.MergeToDoListResponse resp;
+    var body = req.writeToBuffer();
+    if (recording) {
+      resp = await withClient(merge,
+          backendUrl: backendUrl, authorizer: authJwt, verbose: false, body: body);
+    } else {
+      var client = MockClient((request) async {
+        assertUrl(request.url.path);
+        return http.Response("", 204, headers: importantResponseHeaders);
+      });
+      resp = await merge(
+          backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
+          client: client,
+          body: body);
+    }
+    expect(resp, null);
+    expect(false, recording);
+  });
+}
+
 void runTests() {
   runTestsOfUserWithoutTodolistYet();
   runJsonErrorTests();
+  runJwtTests();
 
   // This example template does a merge() call that actually makes an HTTP call
   // and uses verbose mode to display some base64 (the heart of what we call a
