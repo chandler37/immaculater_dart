@@ -1,3 +1,7 @@
+## 0.5.0
+
+        - Protobufs now feature a message UserInfoAndToDoList.
+
 ## 0.4.0
 
         - JSON Web Token (JWT) authentication is supported.
