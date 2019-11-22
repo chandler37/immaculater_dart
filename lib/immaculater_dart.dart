@@ -20,8 +20,13 @@ export 'src/generated/core/pyatdl.pb.dart';
 
 class ApiException implements Exception {
   final String message;
-  ApiException(this.message);
+  const ApiException([String message]) : this.message = message ?? "API call failed";
   String toString() => 'ApiException: $message';
+}
+
+class UnauthenticatedException extends ApiException {
+  const UnauthenticatedException([String message])
+      : super(message ?? "Cannot authenticate user. A common cause is an expired JSON web token.");
 }
 
 /// A client of github.com/chandler37/immaculater which is a Django app
@@ -30,7 +35,7 @@ class DjangoClient extends http.BaseClient {
   final Authorizer _authorizer;
   final http.Client _inner;
 
-  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.6.0-dev";
+  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.6.0";
 
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     request.headers['user-agent'] = userAgent;
@@ -133,6 +138,9 @@ Future<pb.MergeToDoListResponse> merge(
   }
   if (response.statusCode == 204) {
     return null;
+  }
+  if (response.statusCode == 403) {
+    throw UnauthenticatedException();
   }
   if (response.statusCode != 200) {
     throw ApiException(

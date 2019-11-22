@@ -1,3 +1,10 @@
+## 0.6.0
+
+        - UnauthenticatedException is a new subclass of ApiException for
+        HTTP 403 responses (which confuse authorization with
+        authentication (see HTTP 401) but really are about
+        authentication).
+
 ## 0.5.0
 
         - Protobufs now feature a message UserInfoAndToDoList.

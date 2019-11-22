@@ -26,6 +26,8 @@ String password = Platform.environment["DART_TEST_IMMACULATER_PASSWORD"];
 Authorizer auth = UsernamePasswordAuthorizer(username, password);
 // Call /todo/v1/create_jwt to get a JWT, this one expiring in 24 hours:
 Authorizer authJwt = JsonWebTokenAuthorizer(Platform.environment["DART_TEST_IMMACULATER_JWT"]);
+Authorizer authExpiredJwt =
+    JsonWebTokenAuthorizer(Platform.environment["DART_TEST_IMMACULATER_EXPIRED_JWT"]);
 
 Map<String, String> importantResponseHeaders = {
   'content-type': 'application/x-protobuf; messageType="pyatdl.MergeToDoListResponse"'
@@ -529,6 +531,49 @@ void runJwtTests() {
           backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
           client: client,
           body: body);
+    }
+    expect(resp, null);
+    expect(false, recording);
+  });
+
+  test('expired token HTTP 403 path when authenticating with a JWT', () async {
+    bool recording =
+        false; // NOTE: change this if you must rerecord. Also, change authJwt's token to something expired.
+    if (recording) {
+      assertEnvVars();
+    }
+    var req = saneMergeRequest();
+    pb.MergeToDoListResponse resp;
+    var body = req.writeToBuffer();
+    if (recording) {
+      bool caught = false;
+      try {
+        resp = await withClient(merge,
+            backendUrl: backendUrl, authorizer: authExpiredJwt, verbose: false, body: body);
+      } on UnauthenticatedException catch (e) {
+        expect(true, e is ApiException);
+        caught = true;
+        expect("Cannot authenticate user. A common cause is an expired JSON web token.", e.message);
+      }
+      expect(true, caught);
+    } else {
+      var client = MockClient((request) async {
+        assertUrl(request.url.path);
+        return http.Response(
+            "arbitrary, ignored response body because HTTP status 403 is what matters", 403,
+            headers: importantResponseHeaders);
+      });
+      bool caught = false;
+      try {
+        resp = await merge(
+            backendUrl: backendUrlOrDummySufficientForReplayingCasssettes(),
+            client: client,
+            body: body);
+      } on UnauthenticatedException catch (e) {
+        caught = true;
+        expect("Cannot authenticate user. A common cause is an expired JSON web token.", e.message);
+      }
+      expect(true, caught);
     }
     expect(resp, null);
     expect(false, recording);
