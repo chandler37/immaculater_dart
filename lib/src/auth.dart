@@ -1,6 +1,7 @@
 import 'dart:convert' as convert;
 import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
+import 'package:immaculater_dart/src/errors.dart';
 
 abstract class Authorizer {
   // TODO(chandler37): Use a JSON Web Token (JWT) in another class (as opposed
@@ -39,6 +40,10 @@ Future<String> createJsonWebToken(
     @required http.Client client,
     @required String backendUrl}) async {
   var response = await client.post(backendUrl);
+  if (response.statusCode == 403) {
+    throw UnauthenticatedException(
+        "Cannot authenticate user. A common cause is an invalid username, an administratively deactivated user, or an incorrect password.");
+  }
   var json = convert.jsonDecode(response.body) as Map<String, dynamic>;
   assert(json["token"] != null);
   assert(json["token"] is String);

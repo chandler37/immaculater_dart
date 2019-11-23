@@ -35,6 +35,8 @@ Map<String, String> importantResponseHeaders = {
 
 Map<String, String> jsonResponseHeaders = {'content-type': 'application/json'};
 
+Map<String, String> errorResponseHeaders = {'content-type': 'text/html; charset=utf-8'};
+
 void main() {
   runTests();
 }
@@ -494,6 +496,40 @@ void runJwtTests() {
       var resp = await createJsonWebToken(
           client: client, username: username, password: password, backendUrl: backendUrlJwt);
       expect(resp, "e.a.b");
+    }
+    expect(false, recording);
+  });
+
+  test('HTTP 403 path creating a JWT', () async {
+    bool recording = false;
+    if (recording) {
+      bool caught = false;
+      try {
+        await withClient3(createJsonWebToken,
+            backendUrl: backendUrlJwt, username: username, password: password);
+      } on UnauthenticatedException catch (e) {
+        expect(
+            "UnauthenticatedException: Cannot authenticate user. A common cause is an invalid username, an administratively deactivated user, or an incorrect password.",
+            "$e");
+        caught = true;
+      }
+      expect(true, caught);
+    } else {
+      var client = MockClient((request) async {
+        assertJwtUrl(request.url.path);
+        return http.Response('<h1>403</h1>', 403, headers: errorResponseHeaders);
+      });
+      bool caught = false;
+      try {
+        await createJsonWebToken(
+            client: client, username: username, password: password, backendUrl: backendUrlJwt);
+      } on UnauthenticatedException catch (e) {
+        expect(
+            "UnauthenticatedException: Cannot authenticate user. A common cause is an invalid username, an administratively deactivated user, or an incorrect password.",
+            "$e");
+        caught = true;
+      }
+      expect(true, caught);
     }
     expect(false, recording);
   });

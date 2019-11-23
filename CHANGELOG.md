@@ -1,3 +1,7 @@
+## 0.7.0
+
+        - UnauthenticatedException is also used for creating JWTs.
+
 ## 0.6.0
 
         - UnauthenticatedException is a new subclass of ApiException for

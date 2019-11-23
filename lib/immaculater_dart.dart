@@ -7,9 +7,11 @@ import 'package:http/http.dart' as http;
 import 'package:meta/meta.dart';
 import 'package:protobuf/protobuf.dart' as protobuf;
 import 'package:immaculater_dart/src/auth.dart';
+import 'package:immaculater_dart/src/errors.dart';
 import 'package:immaculater_dart/src/generated/core/pyatdl.pb.dart' as pb;
 
 export 'src/auth.dart';
+export 'src/errors.dart';
 export 'src/generated/core/pyatdl.pb.dart';
 
 // `library immaculater_dart` is not recommended: "When the library directive
@@ -18,24 +20,13 @@ export 'src/generated/core/pyatdl.pb.dart';
 // your code unless you plan to generate library-level documentation."
 // TODO(chandler37): Look into what library-level documentation would entail.
 
-class ApiException implements Exception {
-  final String message;
-  const ApiException([String message]) : this.message = message ?? "API call failed";
-  String toString() => 'ApiException: $message';
-}
-
-class UnauthenticatedException extends ApiException {
-  const UnauthenticatedException([String message])
-      : super(message ?? "Cannot authenticate user. A common cause is an expired JSON web token.");
-}
-
 /// A client of github.com/chandler37/immaculater which is a Django app
 class DjangoClient extends http.BaseClient {
   final String userAgent;
   final Authorizer _authorizer;
   final http.Client _inner;
 
-  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.7.0-dev";
+  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.7.0";
 
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     request.headers['user-agent'] = userAgent;
