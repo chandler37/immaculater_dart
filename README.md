@@ -28,11 +28,7 @@ interim.
 
 ## Is it any good?
 
-Not yet. The backend has no ability to merge just yet, for one thing, but much
-more testing is necessary before data loss is unlikely.
-
-Authentication will change away from username plus password to JSON Web Tokens
-(JWTs) or something similar before 1.0.0.
+More testing is necessary before data loss is unlikely.
 
 
 ## Staying up to date with Immaculater's protocol

@@ -4,8 +4,6 @@ import 'package:meta/meta.dart';
 import 'package:immaculater_dart/src/errors.dart';
 
 abstract class Authorizer {
-  // TODO(chandler37): Use a JSON Web Token (JWT) in another class (as opposed
-  // to username and password)
   void addHeaders(Map<String, String> headers);
 }
 

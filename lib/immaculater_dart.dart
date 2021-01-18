@@ -26,7 +26,7 @@ class DjangoClient extends http.BaseClient {
   final Authorizer _authorizer;
   final http.Client _inner;
 
-  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.8.0-dev";
+  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.7.1";
 
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     request.headers['user-agent'] = userAgent;
@@ -171,7 +171,7 @@ Future<pb.MergeToDoListResponse> readToDoList(
     {@required String backendUrl, @required http.Client client}) async {
   pb.MergeToDoListResponse resp =
       await merge(backendUrl: backendUrl, client: client, body: emptyMergeRequest());
-  if (!isSaneResponse(resp)) {
+  if (resp != null && !isSaneResponse(resp)) {
     throw ApiException("Sanity check failed on response");
   }
   return resp;
