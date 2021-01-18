@@ -1,3 +1,7 @@
+## 0.7.1
+
+        - Bug fix for HTTP 204 response from mergeprotobufs
+
 ## 0.7.0
 
         - UnauthenticatedException is also used for creating JWTs.
