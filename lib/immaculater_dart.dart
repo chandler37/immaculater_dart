@@ -26,7 +26,7 @@ class DjangoClient extends http.BaseClient {
   final Authorizer _authorizer;
   final http.Client _inner;
 
-  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.7.2";
+  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.7.3";
 
   @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {

@@ -101,6 +101,7 @@ message UserInfoAndToDoList {
 }
 
 message Timestamp {
+  // All *time fields are in microseconds since the Unix epoch:
   optional int64 ctime = 1 [jstype = JS_STRING];
   optional int64 dtime = 2 [jstype = JS_STRING];
   optional int64 mtime = 3 [jstype = JS_STRING];
@@ -198,7 +199,7 @@ message NoteList {
 }
 
 message ContextList {
-  optional Common common = 1;
+  reserved 1;  // obsolete optional Common common
   repeated Context contexts = 2;
   extensions 20000 to max;
 }

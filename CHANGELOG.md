@@ -1,3 +1,7 @@
+## 0.7.3
+
+        - Updated pyatdl.proto to match the generated code
+
 ## 0.7.2
 
         - More modern generated protocol buffer Dart files, which is hopefully a noop or a bug fix.
