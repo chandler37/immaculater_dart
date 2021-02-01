@@ -34,7 +34,7 @@ toDoList: {
         mtime: 1572872463253848
       }
       metadata: {
-        name: 
+        name:
       }
       uid: 2
     }
@@ -117,18 +117,6 @@ toDoList: {
     }
   }
   ctxList: {
-    common: {
-      isDeleted: false
-      timestamp: {
-        ctime: 1572872463248768
-        dtime: -1
-        mtime: 1572872463252439
-      }
-      metadata: {
-        name: Contexts
-      }
-      uid: 1044824500048154182
-    }
     contexts: {
       common: {
         isDeleted: false
@@ -234,6 +222,7 @@ toDoList: {
       }
       isActive: false
     }
+1: [8, 0, 18, 29, 8, 128, 219, 203, 195, 206, 208, 229, 2, 16, 255, 255, 255, 255, 255, 255, 255, 255, 255, 1, 24, 215, 247, 203, 195, 206, 208, 229, 2, 26, 10, 10, 8, 67, 111, 110, 116, 101, 120, 116, 115, 32, 198, 156, 251, 207, 141, 203, 253, 191, 14]
   }
 }
 sanityCheck: -77129852519530274

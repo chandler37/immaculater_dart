@@ -1,8 +1,7 @@
 SHELL := $(shell which bash)
 
-.PHONY: help
-help:
-	@echo "See README.md"
+.PHONY: paranoid
+paranoid: lint fmt test
 
 .PHONY: install
 install: .pubgotten
@@ -33,4 +32,4 @@ clean:
 	@rm -fr .dart_tool .packages .pubgotten build
 	@echo "NOTE: Leaving pubspec.lock but you might want to remove it too."
 
-.DEFAULT_GOAL := help
+.DEFAULT_GOAL := paranoid

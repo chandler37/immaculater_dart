@@ -13,6 +13,7 @@ class UsernamePasswordAuthorizer implements Authorizer {
 
   UsernamePasswordAuthorizer(this._username, this._password);
 
+  @override
   void addHeaders(Map<String, String> headers) {
     String plaintextPassword = convert.base64Encode(convert.utf8.encode('$_username:$_password'));
     headers['authorization'] = 'Basic ' + plaintextPassword;
@@ -24,6 +25,7 @@ class JsonWebTokenAuthorizer implements Authorizer {
 
   JsonWebTokenAuthorizer(this._jwt);
 
+  @override
   void addHeaders(Map<String, String> headers) {
     headers['authorization'] = 'Bearer $_jwt';
   }

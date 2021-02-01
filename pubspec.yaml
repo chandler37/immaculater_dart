@@ -1,6 +1,6 @@
 name: immaculater_dart
 description: Dart-language code encapsulating Immaculater's mergeprotobufs API for reading and writing to-do lists
-version: 0.7.1
+version: 0.7.2
 author: 'David L. Chandler <immaculaterhelp@gmail.com>'
 homepage: https://github.com/chandler37/immaculater_dart
 
@@ -12,7 +12,7 @@ dependencies:
   http: ^0.12.0+2
   fixnum: ^0.10.9
   meta: ^1.1.7
-  protobuf: ^1.0.0
+  protobuf: ^1.1.0
 
 dev_dependencies:
   pedantic: ^1.8.0

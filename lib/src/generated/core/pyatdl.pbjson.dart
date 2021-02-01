@@ -2,8 +2,8 @@
 //  Generated code. Do not modify.
 //  source: core/pyatdl.proto
 //
-// @dart = 2.3
-// ignore_for_file: camel_case_types,non_constant_identifier_names,library_prefixes,unused_import,unused_shown_name,return_of_invalid_type
+// @dart = 2.7
+// ignore_for_file: annotate_overrides,camel_case_types,unnecessary_const,non_constant_identifier_names,library_prefixes,unused_import,unused_shown_name,return_of_invalid_type,unnecessary_this,prefer_final_fields
 
 const VisitorInfo0$json = const {
   '1': 'VisitorInfo0',
@@ -234,11 +234,13 @@ const NoteList$json = const {
 const ContextList$json = const {
   '1': 'ContextList',
   '2': const [
-    const {'1': 'common', '3': 1, '4': 1, '5': 11, '6': '.pyatdl.Common', '10': 'common'},
     const {'1': 'contexts', '3': 2, '4': 3, '5': 11, '6': '.pyatdl.Context', '10': 'contexts'},
   ],
   '5': const [
     const {'1': 20000, '2': 536870912},
+  ],
+  '9': const [
+    const {'1': 1, '2': 2},
   ],
 };
 

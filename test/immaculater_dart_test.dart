@@ -395,23 +395,6 @@ void runJsonErrorTests() {
         newData: true);
   });
 
-  // The User must *not* have a todo_todolist row already for this to happen:
-  test('test erroneous data (#7 no UID on ctx_list) passed in with new_data: true', () async {
-    await helpTestJsonError(
-        recording: false,
-        updateTdl: (pb.ToDoList beginning) {
-          beginning.clear();
-          beginning.ensureInbox().ensureCommon().uid = inboxUid;
-          beginning.ensureRoot().ensureCommon().uid = rootFolderUid;
-          beginning.ensureCtxList().ensureCommon().ensureMetadata().name = "ctx_list";
-        },
-        msg:
-            '''{"error": "The given to-do list is ill-formed: A UID is missing from or explicitly zero in the protocol buffer!"}''',
-        statusCode: 422,
-        previousSha1Checksum: null,
-        newData: true);
-  });
-
   test('test erroneous data (#8 wrong inbox UID) passed in with new_data: true', () async {
     await helpTestJsonError(
         recording: false,
@@ -419,8 +402,6 @@ void runJsonErrorTests() {
           beginning.clear();
           beginning.ensureInbox().ensureCommon().uid = Int64(37); // 1 is correct
           beginning.ensureRoot().ensureCommon().uid = rootFolderUid;
-          beginning.ensureCtxList().ensureCommon().ensureMetadata().name = "ctx_list";
-          beginning.ensureCtxList().ensureCommon().uid = randomUid(math.Random(400));
         },
         msg: '''{"error": "The given to-do list is ill-formed: Inbox UID is not 1, it is 37"}''',
         statusCode: 422,
@@ -438,8 +419,6 @@ void runJsonErrorTests() {
           beginning.clear();
           beginning.ensureInbox().ensureCommon().uid = inboxUid; // 1 is correct
           beginning.ensureRoot().ensureCommon().uid = rootFolderUid;
-          beginning.ensureCtxList().ensureCommon().ensureMetadata().name = "ctx_list";
-          beginning.ensureCtxList().ensureCommon().uid = randomUid(math.Random(400));
         },
         previousSha1Checksum: null,
         responseBytes: resp.writeToBuffer(),

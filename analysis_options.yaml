@@ -7,11 +7,14 @@ include: package:pedantic/analysis_options.yaml
 # Uncomment to specify additional rules.
 linter:
   rules:
-    - camel_case_types
+    camel_case_types: true
+    prefer_single_quotes: false
+    omit_local_variable_types: false
 
 analyzer:
   strong-mode:
-    implicit-casts: false
     implicit-dynamic: false
+    # TODO(chandler37): This is just because https://github.com/dart-lang/protobuf/issues/390 has not been resolved:
+    implicit-casts: true
   exclude:
     - lib/src/generated/**

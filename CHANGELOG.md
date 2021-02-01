@@ -1,3 +1,7 @@
+## 0.7.2
+
+        - More modern generated protocol buffer Dart files, which is hopefully a noop or a bug fix.
+
 ## 0.7.1
 
         - Bug fix for HTTP 204 response from mergeprotobufs

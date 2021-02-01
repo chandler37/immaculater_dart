@@ -26,8 +26,9 @@ class DjangoClient extends http.BaseClient {
   final Authorizer _authorizer;
   final http.Client _inner;
 
-  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.7.1";
+  DjangoClient(this._inner, this._authorizer) : userAgent = "ImmaculaterDart/0.7.2";
 
+  @override
   Future<http.StreamedResponse> send(http.BaseRequest request) {
     request.headers['user-agent'] = userAgent;
     _authorizer.addHeaders(request.headers);
@@ -178,11 +179,12 @@ Future<pb.MergeToDoListResponse> readToDoList(
 }
 
 Future<T> withClient<T>(
-    Future<T> fn(
-        {@required String backendUrl,
-        @required http.Client client,
-        @required Uint8List body,
-        bool verbose}),
+    Future<T> Function(
+            {@required String backendUrl,
+            @required http.Client client,
+            @required Uint8List body,
+            bool verbose})
+        fn,
     {@required Authorizer authorizer,
     @required String backendUrl,
     @required Uint8List body,
@@ -195,8 +197,10 @@ Future<T> withClient<T>(
   }
 }
 
-Future<T> withClient2<T>(Future<T> fn({@required String backendUrl, @required http.Client client}),
-    {@required Authorizer authorizer, @required String backendUrl}) async {
+Future<T> withClient2<T>(
+    Future<T> Function({@required String backendUrl, @required http.Client client}) fn,
+    {@required Authorizer authorizer,
+    @required String backendUrl}) async {
   var client = DjangoClient(http.Client(), authorizer);
   try {
     return await fn(backendUrl: backendUrl, client: client);
@@ -206,11 +210,12 @@ Future<T> withClient2<T>(Future<T> fn({@required String backendUrl, @required ht
 }
 
 Future<T> withClient3<T>(
-    Future<T> fn(
-        {@required http.Client client,
-        @required String backendUrl,
-        @required String username,
-        @required String password}),
+    Future<T> Function(
+            {@required http.Client client,
+            @required String backendUrl,
+            @required String username,
+            @required String password})
+        fn,
     {@required String backendUrl,
     @required String username,
     @required String password}) async {
